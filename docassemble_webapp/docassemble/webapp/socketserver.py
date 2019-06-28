@@ -4,10 +4,13 @@ import docassemble.base.config
 docassemble.base.config.load(arguments=sys.argv)
 from docassemble.base.config import daconfig
 import docassemble.base.functions
-
+sys.stderr.write("1\n")
 import eventlet
+sys.stderr.write("2\n")
 eventlet.sleep()
+sys.stderr.write("3\n")
 eventlet.monkey_patch()
+sys.stderr.write("4\n")
 
 from flask_socketio import join_room, disconnect
 from docassemble.webapp.app_socket import app, db, socketio
@@ -1023,4 +1026,29 @@ def terminate_observer_connection():
     #disconnect()
 
 if __name__ == '__main__':
-    socketio.run(app)
+    sys.stderr.write("5\n")
+    if daconfig.get('expose websockets', False):
+        try:
+            if 'websockets ip' in daconfig and daconfig['websockets ip']:
+                host = daconfig['websockets ip']
+            else:
+                import netifaces as ni
+                ifaces = [iface for iface in ni.interfaces() if iface != 'lo']
+                host = ni.ifaddresses(ifaces[0])[ni.AF_INET][0]['addr']
+            socketio.run(app, host=host, port=daconfig.get('websockets port', 5000))
+        except:
+            sys.stderr.write("Could not find the external IP address\n")
+            if 'websockets ip' in daconfig and daconfig['websockets ip']:
+                socketio.run(app, host=daconfig['websockets ip'], port=daconfig.get('websockets port', 5000))
+            elif 'websockets port' in daconfig and daconfig['websockets port']:
+                socketio.run(app, port=daconfig['websockets port'])
+            else:
+                socketio.run(app)
+    else:
+        sys.stderr.write("6\n")
+        if 'websockets ip' in daconfig and daconfig['websockets ip']:
+            socketio.run(app, host=daconfig['websockets ip'], port=daconfig.get('websockets port', daconfig.get('websockets port', 5000)))
+        elif 'websockets port' in daconfig and daconfig['websockets port']:
+            socketio.run(app, port=daconfig['websockets port'])
+        else:
+            socketio.run(app)

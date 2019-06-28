@@ -125,7 +125,7 @@ def get_max_width_points():
 
 rtf_spacing = {'tight': '\\sl0 ', 'single': '\\sl0 ', 'oneandahalf': '\\sl360\\slmult1 ', 'double': '\\sl480\\slmult1 ', 'triple': '\\sl720\\slmult1 '}
 
-rtf_after_space = {'tight': 0, 'single': 1, 'oneandahalf': 0, 'double': 0, 'triplespacing': 0}
+rtf_after_space = {'tight': 0, 'single': 1, 'oneandahalf': 0, 'double': 0, 'triplespacing': 0, 'triple': 0}
 
 def rtf_prefilter(text, metadata=dict()):
     text = re.sub(r'^# ', '[HEADING1] ', text, flags=re.MULTILINE)
@@ -1307,17 +1307,15 @@ def add_terms_mako(termname, terms, status=None, question=None):
     lower_termname = termname.lower()
     if lower_termname in terms:
         return('<a tabindex="0" class="daterm" data-toggle="popover" data-placement="bottom" data-content=' + noquote(markdown_to_html(terms[lower_termname]['definition'].text(dict()), trim=True, default_image_width='100%', do_terms=False, status=status, question=question)) + '>' + text_type(termname) + '</a>')
-    else:
-        #logmessage(lower_termname + " is not in terms dictionary\n")
-        return '[[' + termname + ']]'
+    #logmessage(lower_termname + " is not in terms dictionary\n")
+    return '[[' + termname + ']]'
 
 def add_terms(termname, terms, status=None, question=None):
     lower_termname = termname.lower()
     if lower_termname in terms:
         return('<a tabindex="0" class="daterm" data-toggle="popover" data-placement="bottom" data-content=' + noquote(markdown_to_html(terms[lower_termname]['definition'], trim=True, default_image_width='100%', do_terms=False, status=status, question=question)) + '>' + text_type(termname) + '</a>')
-    else:
-        #logmessage(lower_termname + " is not in terms dictionary\n")
-        return '[[' + termname + ']]'
+    #logmessage(lower_termname + " is not in terms dictionary\n")
+    return '[[' + termname + ']]'
 
 def audio_control(files, preload="metadata", title_text=None):
     for d in files:

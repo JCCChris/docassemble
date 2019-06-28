@@ -304,6 +304,10 @@ if [ ! -f $DA_CONFIG_FILE ]; then
 	-e 's@{{POSTURLROOT}}@'"${POSTURLROOT:-/}"'@' \
 	-e 's/{{BEHINDHTTPSLOADBALANCER}}/'"${BEHINDHTTPSLOADBALANCER:-false}"'/' \
 	-e 's/{{XSENDFILE}}/'"${XSENDFILE:-true}"'/' \
+	-e 's/{{DAEXPOSEWEBSOCKETS}}/'"${DAEXPOSEWEBSOCKETS:-false}"'/' \
+	-e 's/{{DAWEBSOCKETSIP}}/'"${DAWEBSOCKETSIP:-null}"'/' \
+	-e 's/{{DAWEBSOCKETSPORT}}/'"${DAWEBSOCKETSPORT:-null}"'/' \
+	-e 's/{{DAUPDATEONSTART}}/'"${DAUPDATEONSTART:-true}"'/' \
 	$DA_CONFIG_FILE_DIST > $DA_CONFIG_FILE || exit 1
 fi
 chown www-data.www-data $DA_CONFIG_FILE
@@ -588,7 +592,17 @@ fi
 
 echo "37" >&2
 
-su -c "source $DA_ACTIVATE && python -m docassemble.webapp.update $DA_CONFIG_FILE" www-data || exit 1
+if [ "${DAUPDATEONSTART:-true}" = "true" ]; then
+    echo "Doing upgrading of packages" >&2
+    su -c "source $DA_ACTIVATE && python -m docassemble.webapp.update $DA_CONFIG_FILE initialize" www-data || exit 1
+    touch "${DA_ROOT}/webapp/initialized"
+fi
+
+if [ "${DAUPDATEONSTART:-true}" = "initial" ] && [ ! -f "${DA_ROOT}/webapp/initialized" ]; then
+    echo "Doing initial upgrading of packages" >&2
+    su -c "source $DA_ACTIVATE && python -m docassemble.webapp.update $DA_CONFIG_FILE initialize" www-data || exit 1
+    touch "${DA_ROOT}/webapp/initialized"
+fi
 
 echo "38" >&2
 
@@ -695,7 +709,7 @@ if [[ $CONTAINERROLE =~ .*:(all|web):.* ]] && [ "$APACHERUNNING" = false ]; then
 	echo -e "LoadModule wsgi_module ${DA_PYTHON:-${DA_ROOT}/${DA_DEFAULT_LOCAL}}/lib/python3.5/site-packages/mod_wsgi/server/mod_wsgi-py35.cpython-35m-x86_64-linux-gnu.so" >> /etc/apache2/conf-available/docassemble.conf
     fi
     echo -e "WSGIPythonHome ${DA_PYTHON:-${DA_ROOT}/${DA_DEFAULT_LOCAL}}" >> /etc/apache2/conf-available/docassemble.conf
-    echo -e "Timeout ${DATIMEOUT:-60}\nDefine DAHOSTNAME ${DAHOSTNAME}\nDefine DAPOSTURLROOT ${POSTURLROOT}\nDefine DAWSGIROOT ${WSGIROOT}\nDefine DASERVERADMIN ${SERVERADMIN}" >> /etc/apache2/conf-available/docassemble.conf
+    echo -e "Timeout ${DATIMEOUT:-60}\nDefine DAHOSTNAME ${DAHOSTNAME}\nDefine DAPOSTURLROOT ${POSTURLROOT}\nDefine DAWSGIROOT ${WSGIROOT}\nDefine DASERVERADMIN ${SERVERADMIN}\nDefine DAWEBSOCKETSIP ${DAWEBSOCKETSIP}\nDefine DAWEBSOCKETSPORT ${DAWEBSOCKETSPORT}" >> /etc/apache2/conf-available/docassemble.conf
     if [ -n "${CROSSSITEDOMAIN}" ]; then
 	echo "Define DACROSSSITEDOMAIN ${CROSSSITEDOMAIN}" >> /etc/apache2/conf-available/docassemble.conf
     fi

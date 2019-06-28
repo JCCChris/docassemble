@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 import re
 import os
+from copy import deepcopy
 from six import string_types, text_type, PY2
 from docxtpl import DocxTemplate, R, InlineImage, RichText, Listing, Document, Subdoc
 from docx.shared import Mm, Inches, Pt
 import docx.opc.constants
+from docxcompose.composer import Composer # For fixing up images, etc when including docx files within templates
+from docx.oxml.section import CT_SectPr # For figuring out if an element is a section or not
 from docassemble.base.functions import server, this_thread, package_template_filename, get_config
 import docassemble.base.filter
 from xml.sax.saxutils import escape as html_escape
@@ -89,6 +92,32 @@ class InlineHyperlink(object):
     def __str__(self):
         return self._insert_link()
 
+def fix_subdoc(masterdoc, subdoc):
+    """Fix the images, styles, references, shapes, etc of a subdoc"""
+    composer = Composer(masterdoc) # Using docxcompose
+    composer.reset_reference_mapping()
+
+    # This is the same as the docxcompose function, except it doesn't copy the elements over.
+    # Copying the elements over is done by returning the subdoc XML in this function.
+    # Both sd.subdocx and the master template file are changed with these functions.
+    composer._create_style_id_mapping(subdoc)
+    for element in subdoc.element.body:
+        if isinstance(element, CT_SectPr):
+            continue
+        composer.add_referenced_parts(subdoc.part, masterdoc.part, element)
+        composer.add_styles(subdoc, element)
+        composer.add_numberings(subdoc, element)
+        composer.restart_first_numbering(subdoc, element)
+        composer.add_images(subdoc, element)
+        composer.add_shapes(subdoc, element)
+        composer.add_footnotes(subdoc, element)
+        composer.remove_header_and_footer_references(subdoc, element)
+
+    composer.add_styles_from_other_parts(subdoc)
+    composer.renumber_bookmarks()
+    composer.renumber_docpr_ids()
+    composer.fix_section_types(subdoc)
+
 def include_docx_template(template_file, **kwargs):
     """Include the contents of one docx file inside another docx file."""
     if this_thread.evaluation_context is None:
@@ -99,7 +128,17 @@ def include_docx_template(template_file, **kwargs):
         template_path = package_template_filename(template_file, package=this_thread.current_package)
     sd = this_thread.misc['docx_template'].new_subdoc()
     sd.subdocx = Document(template_path)
-    sd.subdocx._part = sd.docx._part
+
+    # We need to keep a copy of the subdocs so we can fix up the master template in the end (in parse.py)
+    # Given we're half way through processing the template, we can't fix the master template here
+    # we have to do it in post
+    if 'docx_subdocs' not in this_thread.misc:
+        this_thread.misc['docx_subdocs'] = []
+    this_thread.misc['docx_subdocs'].append(deepcopy(sd.subdocx))
+
+    # Fix the subdocs before they are included in the template
+    fix_subdoc(this_thread.misc['docx_template'], sd.subdocx)
+
     first_paragraph = sd.subdocx.paragraphs[0]
     for key, val in kwargs.items():
         if hasattr(val, 'instanceName'):
@@ -255,11 +294,11 @@ class SoupParser(object):
         self.tpl = tpl
     def new_paragraph(self):
         if self.still_new:
-            logmessage("new_paragraph is still new and style is " + self.style + " and indentation is " + text_type(self.indentation))
+            # logmessage("new_paragraph is still new and style is " + self.style + " and indentation is " + text_type(self.indentation))
             self.current_paragraph['params']['style'] = self.style
             self.current_paragraph['params']['indentation'] = self.indentation
             return
-        logmessage("new_paragraph where style is " + self.style + " and indentation is " + text_type(self.indentation))
+        # logmessage("new_paragraph where style is " + self.style + " and indentation is " + text_type(self.indentation))
         self.current_paragraph = dict(params=dict(style=self.style, indentation=self.indentation), runs=[RichText('')])
         self.paragraphs.append(self.current_paragraph)
         self.run = self.current_paragraph['runs'][-1]
@@ -270,7 +309,7 @@ class SoupParser(object):
         output = ''
         list_number = 1
         for para in self.paragraphs:
-            logmessage("Got a paragraph where style is " + para['params']['style'] + " and indentation is " + text_type(para['params']['indentation']))
+            # logmessage("Got a paragraph where style is " + para['params']['style'] + " and indentation is " + text_type(para['params']['indentation']))
             output += '<w:p><w:pPr><w:pStyle w:val="Normal"/>'
             if para['params']['style'] in ('ul', 'ol', 'blockquote'):
                 output += '<w:ind w:left="' + text_type(36*para['params']['indentation']) + '" w:right="0" w:hanging="0"/>'
@@ -304,7 +343,7 @@ class SoupParser(object):
                 self.run.add(text_type(part), italic=self.italic, bold=self.bold, underline=self.underline, strike=self.strike, size=self.size)
                 self.still_new = False
             elif isinstance(part, Tag):
-                logmessage("Part name is " + text_type(part.name))
+                # logmessage("Part name is " + text_type(part.name))
                 if part.name == 'p':
                     self.new_paragraph()
                     self.traverse(part)
@@ -312,23 +351,23 @@ class SoupParser(object):
                     self.new_paragraph()
                     self.traverse(part)
                 elif part.name == 'ul':
-                    logmessage("Entering a UL")
+                    # logmessage("Entering a UL")
                     oldstyle = self.style
                     self.style = 'ul'
                     self.indentation += 10
                     self.traverse(part)
                     self.indentation -= 10
                     self.style = oldstyle
-                    logmessage("Leaving a UL")
+                    # logmessage("Leaving a UL")
                 elif part.name == 'ol':
-                    logmessage("Entering a OL")
+                    # logmessage("Entering a OL")
                     oldstyle = self.style
                     self.style = 'ol'
                     self.indentation += 10
                     self.traverse(part)
                     self.indentation -= 10
                     self.style = oldstyle
-                    logmessage("Leaving a OL")
+                    # logmessage("Leaving a OL")
                 elif part.name == 'strong':
                     self.bold = True
                     self.traverse(part)
@@ -379,7 +418,7 @@ def markdown_to_docx(text, tpl):
         for elem in soup.find_all(recursive=False):
             parser.traverse(elem)
         output = text_type(parser)
-        logmessage(output)
+        # logmessage(output)
         return output
     else:
         source_code = docassemble.base.filter.markdown_to_html(text, do_terms=False)

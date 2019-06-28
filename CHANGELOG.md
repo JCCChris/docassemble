@@ -1,5 +1,71 @@
 # Change Log
 
+## [0.4.54] - 2019-06-26
+### Added
+- The `language map` directive under the `voicerss` Configuration
+  directive.
+### Changed
+- Renamed `languages` under the `voicerss` Configuration directive to
+  `dialects` (with backwards compatibility).
+### Fixed
+- `list collect` on empty non-object list did not show the first item.
+- Wrong protection on some cells in translation spreadsheets.
+- `nan` values appeared in translation spreadsheets.
+- Terms with capital letters were not being translated.
+- System terms were not appearing in translation YAML when Google
+  Cloud Translation API was not configured.
+
+## [0.4.53] - 2019-06-26
+### Added
+- Jinja2 filters `markdown` and `RichText`.
+### Changed
+- Ampersand correction for DOCX now happens in Jinja2 even if pipe
+  already used.
+### Fixed
+- The `hint` was missing from the data representation of a field.
+- The `note` and `html` were missing from the data representation of a
+  field when not standalone.
+- Group editing did not work with non-object lists and dictionaries.
+- Buttons on `message()` screens did not work.
+
+## [0.4.52] - 2019-06-18
+### Added
+- The `javascript` option for `log()`.
+### Fixed
+- Potential error in Playground sidebar if the same variable name is
+  used for two different types of object.
+- Error if `json` URL parameter is not an integer.
+
+## [0.4.51] - 2019-06-13
+### Changed
+- Added the `initial` option for `update on start`.
+- Using a different mechanism for restarting servers after a software
+  update.
+### Fixed
+- LibreOffice failing when multiple instances of LibreOffice run
+  simultaneously.
+
+## [0.4.50] - 2019-06-12
+### Added
+- The `update on start` Configuration directive.
+- The `expose websockets`, `websockets ip`, and `websockets port`
+  Configuration directives.
+### Changed
+- The `include_docx_template()` function now includes images, shapes,
+  styles, footnotes, etc. from the sub-document.
+- Problem with websockets on servers with a `root` other than `/`.
+- The `/api/session` POST API endpoint will now convert dates to
+  `DADateTime` objects, unless the `raw` parameter is `1`.
+### Fixed
+- Triple spacing in RTF documents.
+- Flask route ambiguity with `/api/user/new`.
+
+## [0.4.49] - 2019-06-08
+### Changed
+- Revised the CSS classes for error messages.
+### Fixed
+- Word add-in did not work for servers with a `root` other than `/`.
+
 ## [0.4.48] - 2019-06-06
 ### Added
 - The `.is_encrypted()` method of `DAFile` and other file objects.
@@ -37,7 +103,7 @@
 - Inserting certain types of images into RTF files resulted in a fatal
   error rather than a non-fatal error.
 
-## [0.4.44] - 2019-05-21
+# [0.4.44] - 2019-05-21
 ### Added
 - Version-specific caching of CSS and JavaScript files.
 - The `sort()` and `sort_elements()` methods for `DAList`.

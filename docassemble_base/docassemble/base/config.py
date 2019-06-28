@@ -108,6 +108,9 @@ def load(**kwargs):
     if 'keymap' in daconfig and daconfig['keymap'] not in ['vim', 'emacs', 'sublime']:
         sys.stderr.write("WARNING!  You used a keymap that is not supported.  Available values are vim, emacs, and sublime.\n")
         del daconfig['keymap']
+    if 'voicerss' in daconfig and isinstance(daconfig['voicerss'], dict) and 'languages' in daconfig['voicerss']:
+        daconfig['voicerss']['dialects'] = daconfig['voicerss']['languages']
+        del daconfig['voicerss']['languages']
     if 'vim' in daconfig:
         sys.stderr.write("WARNING!  The configuration directive vim is deprecated.  Please use keymap instead.\n")
         if daconfig['vim'] and 'keymap' not in daconfig:
@@ -281,6 +284,12 @@ def load(**kwargs):
             del daconfig['checkin interval']
     if daconfig.get('default icons', None) == 'font awesome':
         daconfig['use font awesome'] = True
+    if 'websockets port' in daconfig and daconfig['websockets port']:
+        try:
+            daconfig['websockets port'] = int(daconfig['websockets port'])
+        except:
+            sys.stderr.write("websockets port must be an integer\n")
+            del daconfig['websockets port']
     if 'mail' not in daconfig:
         daconfig['mail'] = dict()
     if 'dispatch' not in daconfig or type(daconfig['dispatch']) is not dict:
